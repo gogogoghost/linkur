@@ -1,0 +1,19 @@
+[package]
+name = "linkur"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tappers = {version="0.4.2",features = ["tokio"]}
+tokio = { version = "1", features = ["full"] }
+quinn = "0.11.7"
+log = "0.4"
+env_logger = "0.11"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
