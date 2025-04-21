@@ -1,5 +1,5 @@
 use std::{
-    io,
+    fs, io,
     net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     sync::Arc,
     time::Duration,
@@ -77,14 +77,37 @@ impl ServerCertVerifier for NoCertificateVerification {
     }
 }
 
+fn get_mac_address(interface: &str) -> [u8; 6] {
+    let path = format!("/sys/class/net/{}/address", interface);
+
+    let mac_str = fs::read_to_string(path).map_err(|e| e.to_string()).unwrap();
+    let mac_str = mac_str.trim();
+
+    if mac_str.len() != 17 {
+        panic!("Wrong mac address: {}", mac_str);
+    }
+
+    let mut mac_bytes = [0u8; 6];
+    for (i, chunk) in mac_str.split(':').enumerate() {
+        mac_bytes[i] = u8::from_str_radix(chunk, 16).map_err(|e| e.to_string())?;
+    }
+    mac_bytes
+}
+
 #[tokio::main]
 async fn main() -> () {
-    // let mut tap = AsyncTap::new()?;
+    let mut tap = AsyncTap::new().unwrap();
+    let inter = tap.name().unwrap();
+    let inter_name = inter.name();
+    let tap_name = inter_name.to_string_lossy();
+    let mac = get_mac_address(&tap_name);
     // let new_addr = Ipv4Addr::new(10, 100, 0, 1);
     // let mut addr_req = AddAddressV4::new(new_addr);
     // addr_req.set_netmask(24);
-    // tap.add_addr(addr_req)?;
-    // tap.set_up()?;
+    // tap.add_addr(addr_req).unwrap();
+    // tap.set_up().unwrap();
+
+    sleep(Duration::from_secs(3600)).await;
 
     // let mut recv_buf = [0; 65536];
 
@@ -122,7 +145,14 @@ async fn main() -> () {
         .unwrap();
     let connection = conn.await.unwrap();
     let (mut send, mut recv) = connection.open_bi().await.unwrap();
+    let mut buf = [0u8; 0xffff];
+    let id = "123456";
+    buf[0] = 0;
+    buf[1] = 0;
+
     loop {
+        // write hello message
+
         send.write_all(b"hello").await.unwrap();
         // send.finish().unwrap();
         println!("sent");
